@@ -6,7 +6,7 @@
 
 <p align="center">
   Sub-millisecond, Kafka-compatible message broker written in C++20.<br>
-  Zero dependencies. Single binary. Drop-in Kafka replacement.
+  Zero dependencies. Single binary. Drop-in Kafka replacement for development and testing.
 </p>
 
 <p align="center">
@@ -26,6 +26,8 @@
 
 Kafka is powerful but heavy — JVM, ZooKeeper/KRaft, gigabytes of RAM, slow startup. For local development and testing, you just need something that speaks the Kafka protocol and gets out of the way.
 
+**Develop locally against BlazeMQ, deploy to real Kafka in production.** Think of it like [LocalStack](https://localstack.cloud/) for AWS or SQLite for PostgreSQL — a lightweight stand-in that keeps your dev loop fast while your production stack stays unchanged.
+
 BlazeMQ is a **52KB native binary** that starts in milliseconds, uses 0% CPU when idle, and works with any Kafka client library out of the box.
 
 ## Features
@@ -34,12 +36,21 @@ BlazeMQ is a **52KB native binary** that starts in milliseconds, uses 0% CPU whe
 - **Sub-millisecond produce latency** — Lock-free data structures, memory-mapped storage, zero-copy where possible
 - **Zero dependencies** — Pure C++20, no JVM, no ZooKeeper, no third-party libraries
 - **Event-driven I/O** — kqueue (macOS) / epoll (Linux), 0% CPU when idle
+- **Consumer groups** — JoinGroup, SyncGroup, Heartbeat, OffsetCommit/Fetch — full rebalance protocol
 - **Auto-topic creation** — Topics created on first produce or metadata request
 - **Cross-platform** — macOS (Apple Silicon + Intel) and Linux (x86-64)
 
 ## Quick Start
 
-### Build
+### Docker (easiest)
+
+```bash
+docker run -p 9092:9092 blazemq/blazemq
+```
+
+That's it — any Kafka client can now connect to `127.0.0.1:9092`.
+
+### Build from source
 
 ```bash
 mkdir -p build && cd build
@@ -177,6 +188,8 @@ Or individually:
 - [Changelog](docs/CHANGELOG.md) — Version history and bug fixes
 
 ## Limitations (v0.1.0)
+
+BlazeMQ is designed for local development and testing, not production. It trades durability and fault-tolerance for simplicity and speed.
 
 - Consumer group offsets are in-memory only (lost on broker restart)
 - No replication (single broker)

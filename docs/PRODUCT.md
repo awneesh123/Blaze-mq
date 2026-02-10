@@ -2,7 +2,9 @@
 
 ## What is BlazeMQ?
 
-BlazeMQ is a high-performance message broker that speaks the Apache Kafka wire protocol. Any Kafka client library (librdkafka, kafka-python, confluent-kafka-go, etc.) can connect to BlazeMQ and produce/consume messages without code changes.
+BlazeMQ is a lightweight Kafka-compatible message broker designed for **local development and testing**. Any Kafka client library (librdkafka, kafka-python, confluent-kafka-go, etc.) can connect to BlazeMQ and produce/consume messages without code changes.
+
+Think of it like [LocalStack](https://localstack.cloud/) for AWS or SQLite for PostgreSQL — develop locally against BlazeMQ, deploy to real Kafka in production.
 
 **Version:** 0.1.0 (Early Development)
 
@@ -147,6 +149,8 @@ Run the built-in benchmarks:
 ```
 
 ## Limitations (v0.1.0)
+
+BlazeMQ is designed for local development and testing, not production. It trades durability and fault-tolerance for simplicity and speed.
 
 - **Consumer group offsets are in-memory** — Committed offsets are lost on broker restart
 - **No replication** — Single broker, no fault tolerance

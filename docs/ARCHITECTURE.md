@@ -2,7 +2,7 @@
 
 ## Overview
 
-BlazeMQ is a sub-millisecond, Kafka-compatible message broker written in C++20. It implements the Kafka wire protocol so standard Kafka clients (librdkafka, kafka-python, etc.) can connect directly. The broker is single-threaded with a non-blocking event loop, targeting ultra-low latency on commodity hardware.
+BlazeMQ is a sub-millisecond, Kafka-compatible message broker written in C++20, designed for local development and testing. It implements the Kafka wire protocol so standard Kafka clients (librdkafka, kafka-python, etc.) can connect directly. The broker is single-threaded with a non-blocking event loop, targeting ultra-low latency on commodity hardware.
 
 ## System Architecture
 
