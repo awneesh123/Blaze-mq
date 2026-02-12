@@ -6,7 +6,7 @@ Kafka is the gold standard for production event streaming. But for local develop
 
 ## The Setup
 
-**StrikeMQ v0.1.4** — C++20, zero dependencies, single binary.
+**StrikeMQ v0.1.5** — C++20, zero dependencies, single binary. Sharded locks (64 shards), circular I/O buffers, optional io_uring on Linux.
 **Apache Kafka 3.7** — Running via `docker compose` with KRaft (no ZooKeeper), default configuration.
 **Hardware** — Apple M-series MacBook, 10 cores, 16GB RAM.
 
@@ -76,7 +76,7 @@ StrikeMQ uses `mmap` for storage segments. The OS manages page residency — onl
 |---|---:|---:|
 | CPU at idle | 1-3% (GC cycles, thread scheduling) | **0.0%** |
 
-StrikeMQ uses `kqueue` (macOS) / `epoll` (Linux) event loops that block when there's nothing to do. No background GC, no periodic timers, no busy loops. The process is literally suspended by the kernel until a packet arrives.
+StrikeMQ uses `kqueue` (macOS) / `epoll` (Linux) / `io_uring` (Linux) event loops with 1ms timeouts. No background GC, no periodic timers, no busy loops. The process is literally suspended by the kernel until a packet arrives.
 
 ```bash
 # StrikeMQ idle for 60 seconds
@@ -99,7 +99,7 @@ The lock-free queue that passes connections from the acceptor thread to workers:
 | avg | **19 ns** |
 | p50 | < 42 ns |
 | p99.9 | **42 ns** |
-| max | 13 us |
+| max | 35 us |
 
 ### Memory Pool (alloc + free)
 Pre-allocated block pool with intrusive freelist:
@@ -109,18 +109,18 @@ Pre-allocated block pool with intrusive freelist:
 | avg | **3 ns** |
 | p50 | < 42 ns |
 | p99.9 | **42 ns** |
-| max | 7 us |
+| max | 167 ns |
 
 ### Log Append (1KB message)
-The full produce path — lock partition, memcpy into mmap'd segment, update offset index, unlock:
+The full produce path — lock one of 64 shards, lock partition, memcpy into mmap'd segment, update offset index, unlock:
 
 | Percentile | Latency |
 |---:|---:|
-| avg | **145 ns** |
+| avg | **157 ns** |
 | p50 | **83 ns** |
-| p99 | **667 ns** |
+| p99 | **1.3 us** |
 | p99.9 | **4.4 us** |
-| max | 15 us |
+| max | 58 us |
 
 ### Kafka Header Decode
 Parsing a complete Kafka request header from raw bytes:
@@ -130,9 +130,9 @@ Parsing a complete Kafka request header from raw bytes:
 | avg | **16 ns** |
 | p50 | < 42 ns |
 | p99.9 | **42 ns** |
-| max | 15 us |
+| max | 14 us |
 
-**Every operation passes the sub-millisecond p99.9 check.** The log append — which is the actual disk write — completes in 145ns on average. That's because `mmap` turns disk writes into memory copies; the OS flushes to disk asynchronously.
+**Every operation passes the sub-millisecond p99.9 check.** The log append — which is the actual disk write — completes in 157ns on average. That's because `mmap` turns disk writes into memory copies; the OS flushes to disk asynchronously. With v0.1.5's `ShardedLogMap<64>`, concurrent writes to different topic-partitions contend on only 1/64th of the lock space.
 
 ---
 
@@ -148,11 +148,11 @@ For the full network round-trip (client -> TCP -> parse -> store -> respond -> c
 
 StrikeMQ's end-to-end produce stays under 1ms at p99.9. The path is:
 ```
-recv() → parse Kafka header (16ns) → decode batch → lock partition mutex →
-memcpy into mmap (145ns) → unlock → encode response → send()
+recv() → parse Kafka header (16ns) → decode batch → shard lookup (1/64) →
+lock partition mutex → memcpy into mmap (157ns) → unlock → encode response → send()
 ```
 
-No GC pauses. No thread context switches for common cases. No JIT warmup.
+No GC pauses. No thread context switches for common cases. No JIT warmup. On Linux with `STRIKE_IO_URING`, the `recv()`/`send()` syscalls are replaced with io_uring submission-based I/O for even lower overhead.
 
 ---
 
@@ -240,4 +240,4 @@ Run the benchmarks yourself:
 
 ---
 
-*All benchmarks run on Apple M-series, macOS, compiled with Clang -O2. Your numbers will vary. Kafka numbers are representative of default configurations — tuned Kafka will perform better, but will still carry the JVM baseline overhead. StrikeMQ numbers are from its built-in benchmark suite using TSC-based nanosecond timing.*
+*All benchmarks run on Apple M-series, macOS, compiled with Clang -O2, StrikeMQ v0.1.5. Your numbers will vary. Kafka numbers are representative of default configurations — tuned Kafka will perform better, but will still carry the JVM baseline overhead. StrikeMQ numbers are from its built-in benchmark suite using TSC-based nanosecond timing.*
