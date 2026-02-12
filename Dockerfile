@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL org.opencontainers.image.title="StrikeMQ" \
       org.opencontainers.image.description="Sub-millisecond Kafka-compatible message broker for development and testing" \
-      org.opencontainers.image.version="0.1.4" \
+      org.opencontainers.image.version="0.1.5" \
       org.opencontainers.image.url="https://github.com/awneesht/Strike-mq" \
       org.opencontainers.image.source="https://github.com/awneesht/Strike-mq" \
       org.opencontainers.image.licenses="MIT"
